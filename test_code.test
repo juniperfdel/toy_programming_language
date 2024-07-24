@@ -1,0 +1,22 @@
+func square(x) {
+    return x*x
+    return 5
+}
+
+func multiply(a, b) {
+    return a*b
+}
+
+if (2 == 2 || (false)) {
+    var ab = ((1 < 2) && (9 > 10))
+    var cd = 4^2 - multiply(5,(10/5))
+    cd = square(square(cd))
+} 
+
+if (true) {
+    if (true) {
+        print(square(6))
+    } else {
+        print(square(4))
+    }
+}
