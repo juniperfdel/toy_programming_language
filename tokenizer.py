@@ -3,8 +3,11 @@ from enum import Enum, auto
 
 
 class TokenType(Enum):
-    # Math
+    # Atomic Types
     NUMBER = auto()
+    STRING = auto()
+
+    # Math
     PLUS = auto()
     MINUS = auto()
     TIMES = auto()
@@ -23,9 +26,13 @@ class TokenType(Enum):
     LO_LTE = auto()
     LO_GTE = auto()
     LO_EQU = auto()
+    LO_NEQ = auto()
 
     LO_TRUE = auto()
     LO_FALSE = auto()
+
+    # String
+    QUOTE = auto()
 
     # Seperators
     LPAREN = auto()
@@ -33,6 +40,9 @@ class TokenType(Enum):
 
     LBRACK = auto()
     RBRACK = auto()
+
+    LSQBRA = auto()
+    RSQBRA = auto()
 
     # Code
     EQUALS = auto()
@@ -47,6 +57,14 @@ class TokenType(Enum):
     RETURN = auto()
     LO_IF = auto()
     LO_ELSE = auto()
+
+    # Loops
+    WHILE = auto()
+    UNTIL = auto()
+
+    # Class
+    CLASSDEF = auto()
+    DOT = auto()
 
 
 @dataclass
@@ -84,6 +102,7 @@ D_LO_OP_TYPES = {
     "=<": TokenType.LO_LTE,
     "=>": TokenType.LO_GTE,
     "==": TokenType.LO_EQU,
+    "!=": TokenType.LO_NEQ,
 }
 
 d_lo_check = "&|><="
@@ -104,12 +123,15 @@ OP_TYPES = {
     TokenType.RBRACK: "}",
     TokenType.LPAREN: "(",
     TokenType.RPAREN: ")",
+    TokenType.LSQBRA: "[",
+    TokenType.RSQBRA: "]",
     TokenType.EQUALS: "=",
     TokenType.COMMA: ",",
     TokenType.LANGLE: "<",
     TokenType.RANGLE: ">",
     TokenType.AMPER: "&",
     TokenType.PIPE: "|",
+    TokenType.DOT: ".",
 }
 
 op_tokens = {
@@ -126,6 +148,9 @@ KEYWORD_TOKEN_TYPES = {
     TokenType.LO_ELSE: "else",
     TokenType.LO_TRUE: "true",
     TokenType.LO_FALSE: "false",
+    TokenType.WHILE: "while",
+    TokenType.UNTIL: "until",
+    TokenType.CLASSDEF: "class",
 }
 
 
@@ -160,6 +185,8 @@ class Tokenizer:
         while self.current_char is not None:
             if self.current_char in SPACE_CHAR:
                 self.skip_whitespace()
+            if self.current_char == "#":
+                self.skip_rest_of_line()
             if (self.current_char in d_lo_check) and (self.pos < len(self.code)):
                 op_check: str = self.current_char + self.code[self.pos + 1]
                 if op_check in d_lo_op_tokens:
@@ -175,6 +202,8 @@ class Tokenizer:
                 tokens.append(self.identifier())
             elif self.current_char.isdigit():
                 tokens.append(self.number())
+            elif self.current_char == '"' or self.current_char == "'":
+                tokens.append(self.string(self.current_char))
             else:
                 raise RuntimeError(
                     f"Unexpected character {self.current_char!r} at line {self.line} column {self.column}"
@@ -184,6 +213,24 @@ class Tokenizer:
     def skip_whitespace(self):
         while self.current_char is not None and (self.current_char in SPACE_CHAR):
             self.advance()
+
+    def skip_rest_of_line(self):
+        while self.current_char is not None and self.current_char != "\n":
+            self.advance()
+
+    def string(self, quote_type) -> Token:
+        self.advance()
+        start_pos = self.pos
+        while self.current_char is not None and self.current_char != quote_type:
+            self.advance()
+        if self.current_char == quote_type:
+            value = self.code[start_pos : self.pos]
+            self.advance()
+        else:
+            raise RuntimeError(
+                f"Did not find {quote_type} before line {self.line} column {self.column}"
+            )
+        return Token(TokenType.STRING, value, self.line, self.column)
 
     def number(self) -> Token:
         start_pos = self.pos

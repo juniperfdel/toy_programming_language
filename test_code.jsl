@@ -1,0 +1,67 @@
+class Test {
+    var hi = 1
+    func test() {
+        hi = 2
+        return hi
+    }
+
+    func test2() {
+        var a = 2
+        return a + hi
+    }
+}
+
+class Test2 {
+    var a = Test()
+}
+
+
+func return_one() {
+    return 01
+}
+
+func square(x) {
+    return x*x
+    return 5
+}
+
+func multiply(a, b) {
+    return a*b
+}
+
+if (2 == 2 || (false)) {
+    var ab = ((1 < 2) && (9 > 10))
+    var cd = 4^2 - multiply(5,(10/5))
+    cd = square(square(cd))
+} 
+
+if (true) {
+    if (true) {
+        print(square(6))
+        print(return_one())
+    } else {
+        print(square(4))
+    }
+}
+
+var oo = 0
+while (oo < 5) {
+    print(oo)
+    oo = oo + 1
+}
+
+print(cd)
+print(ab)
+print("hello " + "world")
+
+print(" ----- ")
+var a = Test()
+print(a.hi)
+print(a.test())
+print(a.test2())
+print(a.hi)
+a.hi = 5
+print(a.hi)
+
+var b = Test2()
+print(b.a.hi)
