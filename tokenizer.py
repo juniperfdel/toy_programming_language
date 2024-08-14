@@ -152,7 +152,7 @@ KEYWORD_TOKEN_TYPES = {
     TokenType.WHILE: "while",
     TokenType.UNTIL: "until",
     TokenType.CLASSDEF: "class",
-    TokenType.BREAK: "break"
+    TokenType.BREAK: "break",
 }
 
 

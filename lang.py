@@ -139,7 +139,7 @@ class Evaluator:
                         break
                 cond_value: bool = self.evaluate(node.cond, inst).value
                 if self.current_frame.break_loop:
-                        cond_value = False
+                    cond_value = False
             if self.current_frame.break_loop:
                 self.current_frame.break_loop = False
         elif node_type == ASTType.UntilStmt:
@@ -151,7 +151,7 @@ class Evaluator:
                         break
                 cond_value: bool = not self.evaluate(node.cond, inst).value
                 if self.current_frame.break_loop:
-                        cond_value = False
+                    cond_value = False
             if self.current_frame.break_loop:
                 self.current_frame.break_loop = False
         elif node_type == ASTType.ClassDefStmt:
@@ -273,10 +273,13 @@ class Evaluator:
             )
         return None
 
+
 def main():
     parser = argparse.ArgumentParser("Juniper's Silly Little Language")
     parser.add_argument("ifile", help="The file with the code", type=Path)
-    parser.add_argument("--debug", help="Show debugging information", action="store_true")
+    parser.add_argument(
+        "--debug", help="Show debugging information", action="store_true"
+    )
     args = parser.parse_args()
 
     DEBUG: bool = args.debug

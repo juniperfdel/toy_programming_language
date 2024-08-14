@@ -20,8 +20,7 @@ value_type_strs = {
     ValueTypes.Boolean: "Boolean",
     ValueTypes.ConstNumber: "ConstNumber",
     ValueTypes.ConstString: "ConstString",
-    ValueTypes.ConstBoolean: "ConstBoolean"
-
+    ValueTypes.ConstBoolean: "ConstBoolean",
 }
 
 
