@@ -1,0 +1,18 @@
+var a = 0
+while (a < 5) {
+    a = a + 1
+    print("before break")
+    print(a)
+    if (a > 3) {
+        break
+    }
+    print(a)
+    print("past break")
+}
+
+print("-----------")
+var b = 0
+until (b > 5) {
+    b = b + 1
+    print(b)
+}

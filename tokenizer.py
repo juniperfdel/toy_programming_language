@@ -61,6 +61,7 @@ class TokenType(Enum):
     # Loops
     WHILE = auto()
     UNTIL = auto()
+    BREAK = auto()
 
     # Class
     CLASSDEF = auto()
@@ -151,6 +152,7 @@ KEYWORD_TOKEN_TYPES = {
     TokenType.WHILE: "while",
     TokenType.UNTIL: "until",
     TokenType.CLASSDEF: "class",
+    TokenType.BREAK: "break"
 }
 
 

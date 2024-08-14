@@ -43,6 +43,7 @@ class FunctionFrame:
         self.function_table: dict[str, ClassInstanceFn] = {}
         self.return_value = None
         self.halt = False
+        self.break_loop = False
 
 
 class Evaluator:
@@ -116,21 +117,43 @@ class Evaluator:
         elif node_type == ASTType.PrintStmt:
             value = self.evaluate(node.value, inst)
             print(value)
+        elif node_type == ASTType.BreakStmt:
+            self.current_frame.break_loop = True
         elif node_type == ASTType.IfStmt:
-            if self.evaluate(node.cond, inst):
+            if self.evaluate(node.cond, inst).value:
                 for inode in node.body:
                     self.evaluate(inode, inst)
         elif node_type == ASTType.IfElseStmt:
-            if self.evaluate(node.cond):
+            if self.evaluate(node.cond).value:
                 for inode in node.true_body:
                     self.evaluate(inode, inst)
             else:
                 for inode in node.false_body:
                     self.evaluate(inode, inst)
         elif node_type == ASTType.WhileStmt:
-            while self.evaluate(node.cond, inst).value:
+            cond_value: bool = self.evaluate(node.cond, inst).value
+            while cond_value:
                 for inode in node.body:
                     self.evaluate(inode, inst)
+                    if self.current_frame.break_loop:
+                        break
+                cond_value: bool = self.evaluate(node.cond, inst).value
+                if self.current_frame.break_loop:
+                        cond_value = False
+            if self.current_frame.break_loop:
+                self.current_frame.break_loop = False
+        elif node_type == ASTType.UntilStmt:
+            cond_value = not self.evaluate(node.cond, inst).value
+            while cond_value:
+                for inode in node.body:
+                    self.evaluate(inode, inst)
+                    if self.current_frame.break_loop:
+                        break
+                cond_value: bool = not self.evaluate(node.cond, inst).value
+                if self.current_frame.break_loop:
+                        cond_value = False
+            if self.current_frame.break_loop:
+                self.current_frame.break_loop = False
         elif node_type == ASTType.ClassDefStmt:
             self.current_frame.class_table[node.name] = ClassDefinition(
                 node.name, node.parents, node.class_vars, node.class_methods
@@ -250,14 +273,13 @@ class Evaluator:
             )
         return None
 
-
-DEBUG = False
-
-
 def main():
     parser = argparse.ArgumentParser("Juniper's Silly Little Language")
     parser.add_argument("ifile", help="The file with the code", type=Path)
+    parser.add_argument("--debug", help="Show debugging information", action="store_true")
     args = parser.parse_args()
+
+    DEBUG: bool = args.debug
 
     ifile: Path = args.ifile
     code = ifile.read_text()

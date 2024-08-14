@@ -6,6 +6,11 @@ class ValueTypes(Enum):
     Number = auto()
     String = auto()
     Boolean = auto()
+
+    ConstNumber = auto()
+    ConstString = auto()
+    ConstBoolean = auto()
+
     Undefined = auto()
 
 
@@ -13,6 +18,10 @@ value_type_strs = {
     ValueTypes.Number: "Number",
     ValueTypes.String: "String",
     ValueTypes.Boolean: "Boolean",
+    ValueTypes.ConstNumber: "ConstNumber",
+    ValueTypes.ConstString: "ConstString",
+    ValueTypes.ConstBoolean: "ConstBoolean"
+
 }
 
 
@@ -86,7 +95,7 @@ class Value:
         )
 
     def str_for_other_type(self, other: Self):
-        return f"for the {self} type and {other} type"
+        return f"for {self} and {other}"
 
     def __str__(self):
         if self.type == ValueTypes.Undefined:
@@ -97,7 +106,7 @@ class Value:
 
 
 class BooleanValue(Value):
-    def __init__(self, value: bool):
+    def __init__(self, value: bool) -> None:
         self.value = value
         self.type = ValueTypes.Boolean
 

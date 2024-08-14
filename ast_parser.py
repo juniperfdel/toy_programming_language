@@ -10,7 +10,7 @@ class ASTType(Enum):
     Boolean = auto()
 
     BinOp = auto()
-
+    
     VarDecl = auto()
     VarGet = auto()
 
@@ -24,6 +24,8 @@ class ASTType(Enum):
 
     WhileStmt = auto()
     UntilStmt = auto()
+
+    BreakStmt = auto()
 
     ClassDefStmt = auto()
     SelfStmt = auto()
@@ -98,7 +100,6 @@ class VarDecl(ASTNode):
 
     def __str__(self) -> str:
         return f"(ASSIGN {self.identifier} {self.value})"
-
 
 class VarGet(ASTNode):
     def __init__(self, value: AstAccessors) -> None:
@@ -198,6 +199,21 @@ class WhileStmt(ASTNode):
     def __str__(self) -> str:
         return f'(WHILE {self.cond} ({"; ".join(map(str,self.body))})'
 
+class UntilStmt(ASTNode):
+    def __init__(self, cond: ASTNode, body: list[ASTNode]) -> None:
+        self.cond = cond
+        self.body = body
+        self.type = ASTType.UntilStmt
+
+    def __str__(self) -> str:
+        return f'(UNTIL {self.cond} ({"; ".join(map(str,self.body))})'
+
+class BreakStmt(ASTNode):
+    def __init__(self) -> None:
+        self.type = ASTType.BreakStmt
+
+    def __str__(self) -> str:
+        return "(BREAK)"
 
 class Boolean(ASTNode):
     def __init__(self, value: bool) -> None:
@@ -232,7 +248,7 @@ def consume_print(ip: "Parser"):
     return PrintStmt(value)
 
 
-def consume_var_decl(ip: "Parser", in_class: bool = False):
+def consume_var_decl(ip: "Parser"):
     ip.consume(TokenType.ASSIGN)
     id_token: AstAccessors = consume_accessor(ip)
     ip.consume(TokenType.EQUALS)
@@ -245,6 +261,9 @@ def consume_return(ip: "Parser"):
     value: ASTNode = ip.logic_stg1()
     return FuncReturnStmt(value)
 
+def consume_break(ip: "Parser"):
+    ip.consume(TokenType.BREAK)
+    return BreakStmt()
 
 def consume_block(
     ip: "Parser",
@@ -361,6 +380,15 @@ def consume_while(ip: "Parser"):
     body_nodes = consume_block(ip, cond_parser)
     return WhileStmt(cond_node, body_nodes)
 
+def consume_until(ip: "Parser"):
+    ip.consume(TokenType.UNTIL)
+    cond_parser = Parser()
+    cond_node: ASTNode = consume_block(
+        ip, cond_parser, TokenType.LPAREN, TokenType.RPAREN
+    )[0]
+    body_nodes = consume_block(ip, cond_parser)
+    return UntilStmt(cond_node, body_nodes)
+
 
 parse_keyword_ast: dict[TokenType, Callable[["Parser"], ASTNode]] = {
     TokenType.ASSIGN: consume_var_decl,
@@ -369,7 +397,9 @@ parse_keyword_ast: dict[TokenType, Callable[["Parser"], ASTNode]] = {
     TokenType.FUNCDEF: consume_func_def,
     TokenType.LO_IF: consume_if,
     TokenType.WHILE: consume_while,
+    TokenType.UNTIL: consume_until,
     TokenType.CLASSDEF: consume_class_def,
+    TokenType.BREAK: consume_break
 }
 
 

@@ -1,12 +1,12 @@
 class Test {
     var hi = 1
     func test() {
-        hi = 2
+        hi = 10
         return hi
     }
 
     func test2() {
-        var a = 2
+        var a = test()
         return a + hi
     }
 }
