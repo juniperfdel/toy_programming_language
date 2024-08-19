@@ -12,6 +12,8 @@ from lang_value import (
 )
 from tokenizer import Tokenizer, TokenType
 
+from global_fns import global_functions
+
 MAX_FUNCTION_DEPTH = 100
 
 class_operator_override_fns: dict[TokenType, str] = {
@@ -151,9 +153,10 @@ class Evaluator:
         elif node_type == ASTType.FuncReturnStmt:
             self.current_frame.return_value = self.evaluate(node.value, inst)
             self.current_frame.halt = True
-        elif node_type == ASTType.PrintStmt:
-            value = self.evaluate(node.value, inst)
-            print(value)
+        elif node_type == ASTType.GlobalFnStmt:
+            global_fn_name = node.name
+            fn_args = [self.evaluate(arg_node, inst) for arg_node in node.args]
+            return global_functions[global_fn_name](fn_args)
         elif node_type == ASTType.BreakStmt:
             self.current_frame.break_loop = True
         elif node_type == ASTType.IfStmt:

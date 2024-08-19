@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from global_fns import global_functions
 
 class TokenType(Enum):
     # Atomic Types
@@ -52,11 +53,13 @@ class TokenType(Enum):
 
     # Keywords
     ASSIGN = auto()
-    PRINT = auto()
     FUNCDEF = auto()
     RETURN = auto()
     LO_IF = auto()
     LO_ELSE = auto()
+
+    # Global Functions
+    GLOBALFN = auto()
 
     # Loops
     WHILE = auto()
@@ -142,7 +145,6 @@ op_tokens = {
 
 KEYWORD_TOKEN_TYPES = {
     TokenType.ASSIGN: "var",
-    TokenType.PRINT: "print",
     TokenType.FUNCDEF: "func",
     TokenType.RETURN: "return",
     TokenType.LO_IF: "if",
@@ -255,4 +257,6 @@ class Tokenizer:
         token_func = keyword_tokens.get(value, None)
         if token_func is not None:
             return token_func(self, value)
+        if value in global_functions:
+            return Token(TokenType.GLOBALFN, value, self.line, self.column)
         return Token(TokenType.IDENTIFIER, value, self.line, self.column)

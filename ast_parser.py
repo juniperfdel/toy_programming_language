@@ -2,7 +2,7 @@ from enum import Enum, auto
 from typing import Callable, TypeAlias, Union
 
 from tokenizer import Token, TokenType, keyword_tokens
-
+from global_fns import global_functions
 
 class ASTType(Enum):
     Number = auto()
@@ -19,7 +19,7 @@ class ASTType(Enum):
     FuncCallStmt = auto()
     FuncReturnStmt = auto()
 
-    PrintStmt = auto()
+    GlobalFnStmt = auto()
     IfStmt = auto()
     IfElseStmt = auto()
 
@@ -123,13 +123,14 @@ class VarGet(ASTNode):
         return f"(GET {self.value})"
 
 
-class PrintStmt(ASTNode):
-    def __init__(self, value) -> None:
-        self.value = value
-        self.type = ASTType.PrintStmt
+class GlobalFnStmt(ASTNode):
+    def __init__(self, fn_name: str, args: list[ASTNode]) -> None:
+        self.name = fn_name
+        self.args = args
+        self.type = ASTType.GlobalFnStmt
 
     def __str__(self) -> str:
-        return f"(PRINT {self.value})"
+        return f"(CALLFN {self.name} ({';'.join(map(str,self.args))}))"
 
 
 class FuncDefStmt(ASTNode):
@@ -248,11 +249,11 @@ class ListType(ASTNode):
     def __str__(self) -> str:
         return f'(ListType ({"; ".join(map(str,self.elements))}))'
 
-
+keys_global_fns = list(keyword_tokens.keys()) + list(global_functions.keys())
 def check_if_token_keyword(itok: Token) -> None:
-    if itok.value.lower() in keyword_tokens.keys():
+    if itok.value.lower() in keys_global_fns:
         raise SyntaxError(
-            f"ERROR @ [{itok.line}, {itok.column}]; Do not use a keyword for a class or variable name!"
+            f"ERROR @ [{itok.line}, {itok.column}]; Do not use a keyword or global function for a class or variable name!"
         )
 
 
@@ -271,14 +272,6 @@ def consume_accessor(ip: "Parser") -> AstAccessors:
                 )[0],
             )
     return BareAccess(id_tok.value)
-
-
-def consume_print(ip: "Parser"):
-    ip.consume(TokenType.PRINT)
-    ip.consume(TokenType.LPAREN)
-    value: ASTNode = ip.logic_stg1()
-    ip.consume(TokenType.RPAREN)
-    return PrintStmt(value)
 
 
 def consume_var_decl(ip: "Parser"):
@@ -427,9 +420,19 @@ def consume_until(ip: "Parser"):
     return UntilStmt(cond_node, body_nodes)
 
 
+def consume_global_fn(ip: "Parser"):
+    fn_name_tok = ip.consume(TokenType.GLOBALFN)
+    arg_nodes: list[ASTNode] = consume_block(
+        ip,
+        left_bound=TokenType.LPAREN,
+        right_bound=TokenType.RPAREN,
+        include_comma=True,
+    )
+    return GlobalFnStmt(fn_name_tok.value, arg_nodes)
+
 parse_keyword_ast: dict[TokenType, Callable[["Parser"], ASTNode]] = {
     TokenType.ASSIGN: consume_var_decl,
-    TokenType.PRINT: consume_print,
+    TokenType.GLOBALFN: consume_global_fn,
     TokenType.RETURN: consume_return,
     TokenType.FUNCDEF: consume_func_def,
     TokenType.LO_IF: consume_if,
@@ -438,7 +441,6 @@ parse_keyword_ast: dict[TokenType, Callable[["Parser"], ASTNode]] = {
     TokenType.CLASSDEF: consume_class_def,
     TokenType.BREAK: consume_break,
 }
-
 
 def consume_func_call(ip: "Parser", func_name_node: AstAccessors) -> FuncCallStmt:
     arg_nodes: list[ASTNode] = consume_block(
@@ -503,7 +505,7 @@ class Parser:
             if self.tokens[self.pos].type in token_delim:
                 self.consume(self.tokens[self.pos].type)
                 continue
-            rv.append(self.statement())
+            rv.append(self.logic_stg1())
             if self.pos < self.tok_len:
                 if self.tokens[self.pos].type in token_delim:
                     self.consume(self.tokens[self.pos].type)
@@ -522,13 +524,6 @@ class Parser:
         raise SyntaxError(
             f"Expected {token_type} but got {token.type} at {token.line}:{token.column}"
         )
-
-    def statement(self) -> ASTNode:
-        if (self.pos < self.tok_len) and (
-            self.tokens[self.pos].type in parse_keyword_ast
-        ):
-            return self.keyword_consume()
-        return self.logic_stg1()
 
     def keyword_consume(self) -> ASTNode:
         token: Token = self.tokens[self.pos]
@@ -611,3 +606,6 @@ class Parser:
             node = self.logic_stg1()
             self.consume(TokenType.RPAREN)
             return node
+        elif token.type in parse_keyword_ast:
+            return self.keyword_consume()
+

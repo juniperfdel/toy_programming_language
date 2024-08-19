@@ -1,7 +1,13 @@
 var a = [[1,2],2,3,4]
 var b = "abc"
+var c = 10
 
 a[2] = 5
+
+a = append(a, "test")
+
 print(a)
 print(a[0])
 print(b[a[1]])
+
+print(string(c) + " hello world")
