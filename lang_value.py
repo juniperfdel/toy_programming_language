@@ -6,10 +6,7 @@ class ValueTypes(Enum):
     Number = auto()
     String = auto()
     Boolean = auto()
-
-    ConstNumber = auto()
-    ConstString = auto()
-    ConstBoolean = auto()
+    ClassInstance = auto()
 
     Undefined = auto()
 
@@ -18,9 +15,8 @@ value_type_strs = {
     ValueTypes.Number: "Number",
     ValueTypes.String: "String",
     ValueTypes.Boolean: "Boolean",
-    ValueTypes.ConstNumber: "ConstNumber",
-    ValueTypes.ConstString: "ConstString",
-    ValueTypes.ConstBoolean: "ConstBoolean",
+    ValueTypes.ClassInstance: "ClassInstance",
+    ValueTypes.Undefined: "Undefined"
 }
 
 

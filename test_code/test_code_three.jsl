@@ -1,0 +1,22 @@
+class Test {
+    var b = 5
+}
+
+class TestAdd {
+    var v = 0
+    func add(other) {
+        var rv = TestAdd()
+        var ex = Test()
+        rv.v = v + other.v + ex.b
+        return rv
+    }
+}
+
+var a = TestAdd()
+var b = TestAdd()
+
+a.v = 1
+b.v = 2
+
+var c = a + b
+print(c)

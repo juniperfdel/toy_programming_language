@@ -2,11 +2,25 @@ import argparse
 from pathlib import Path
 
 from ast_parser import AstAccessors, ASTNode, ASTType, FuncDefStmt, Parser, VarDecl
-from lang_value import BooleanValue, NumberValue, StringValue, Value
+from lang_value import BooleanValue, NumberValue, StringValue, Value, ValueTypes
 from tokenizer import Tokenizer, TokenType
 
 MAX_FUNCTION_DEPTH = 100
 
+class_operator_override_fns: dict[TokenType, str] = {
+    TokenType.PLUS: "add",
+    TokenType.MINUS: "sub",
+    TokenType.TIMES: "mul",
+    TokenType.DIVIDE: "div",
+    TokenType.POW: "pow",
+    TokenType.LANGLE: "lss_than",
+    TokenType.RANGLE: "gtr_than",
+    TokenType.LO_AND: "and_op",
+    TokenType.LO_OR: "or_op",
+    TokenType.LO_EQU: "eq_op",
+    TokenType.LO_GTE: "gtr_eq",
+    TokenType.LO_LTE: "lss_eq"
+}
 
 class ClassDefinition:
     def __init__(self, name, parents, class_vars, class_methods):
@@ -16,19 +30,24 @@ class ClassDefinition:
         self.class_methods: list[FuncDefStmt] = class_methods
 
 
-class ClassInstanceFn:
+class FnWithInstance:
     def __init__(self, fn_def: FuncDefStmt, my_inst: "ClassInstance" = None) -> None:
         self.fn_def: FuncDefStmt = fn_def
         self.my_inst: ClassInstance | None = my_inst
 
 
-class ClassInstance:
+class ClassInstance(Value):
     def __init__(self):
         self.class_name: str = ""
         self.class_table: dict[str, ClassDefinition] = {}
-        self.function_table: dict[str, ClassInstanceFn] = {}
+        self.function_table: dict[str, FnWithInstance] = {}
         self.symbol_table: dict = dict()
 
+        self.value = self
+        self.type = ValueTypes.ClassInstance
+
+    def __str__(self):
+        return f"<Type:{self.class_name}; symbol_table:{self.symbol_table}>"
 
 class FunctionFrame:
     def __init__(
@@ -40,7 +59,7 @@ class FunctionFrame:
         self.body: list[ASTNode] = body if body is not None else list()
         self.symbol_table = dict()
         self.class_table: dict[str, ClassDefinition] = {}
-        self.function_table: dict[str, ClassInstanceFn] = {}
+        self.function_table: dict[str, FnWithInstance] = {}
         self.return_value = None
         self.halt = False
         self.break_loop = False
@@ -70,6 +89,11 @@ class Evaluator:
             return BooleanValue(node.value)
         elif node_type == ASTType.BinOp:
             left = self.evaluate(node.left, inst)
+            if left.type == ValueTypes.ClassInstance:
+                op_fn_name = class_operator_override_fns[node.op]
+                if op_fn_name in left.function_table:
+                    return self.call_function(left.function_table[op_fn_name], [node.right], inst)
+
             right = self.evaluate(node.right, inst)
             if node.op == TokenType.PLUS:
                 return left.add(right)
@@ -101,12 +125,12 @@ class Evaluator:
         elif node_type == ASTType.VarGet:
             return self.evaluate_accessor(node.value, inst)
         elif node_type == ASTType.FuncDefStmt:
-            self.current_frame.function_table[node.name] = ClassInstanceFn(node, None)
+            self.current_frame.function_table[node.name] = FnWithInstance(node, None)
         elif node_type == ASTType.FuncCallStmt:
             a_res = self.evaluate_accessor(node.name, inst)
             if isinstance(a_res, ClassDefinition):
                 return self.make_instance(a_res, node.params, inst)
-            if isinstance(a_res, ClassInstanceFn):
+            if isinstance(a_res, FnWithInstance):
                 return self.call_function(a_res, node.params, inst)
             raise Exception(
                 f"Error: {node.name} is not defined in {self.current_frame.name}"
@@ -162,14 +186,14 @@ class Evaluator:
             return self.evaluate_accessor(node, inst)
         return None
 
-    def add_vars_and_fns_to_inst(self, c_inst: ClassInstance, c_def: ClassDefinition):
+    def add_class_vars_and_fns_to_inst(self, c_inst: ClassInstance, c_def: ClassDefinition):
         for c_var in c_def.class_vars:
             self.evaluate_accessor(
                 c_var.identifier, c_inst, self.evaluate(c_var.value), True
             )
 
         for c_fn in c_def.class_methods:
-            c_inst.function_table[c_fn.name] = ClassInstanceFn(c_fn, c_inst)
+            c_inst.function_table[c_fn.name] = FnWithInstance(c_fn, c_inst)
 
     def make_instance(
         self,
@@ -183,7 +207,7 @@ class Evaluator:
             if par_class == "#":
                 continue
             try:
-                self.add_vars_and_fns_to_inst(
+                self.add_class_vars_and_fns_to_inst(
                     fut_inst, self.current_frame.class_table[par_class]
                 )
             except KeyError:
@@ -191,10 +215,10 @@ class Evaluator:
                     f"Error: attempting to instantiate parent class {par_class} of {fut_class_def.name}, but the class is not defined in function context"
                 )
 
-        self.add_vars_and_fns_to_inst(fut_inst, fut_class_def)
+        self.add_class_vars_and_fns_to_inst(fut_inst, fut_class_def)
 
-        if "__init__" in fut_inst.function_table:
-            init_fn = fut_inst.function_table["__init__"]
+        if "init" in fut_inst.function_table:
+            init_fn = fut_inst.function_table["init"]
             self.call_function(init_fn, class_params, fut_inst)
 
         fut_inst.class_name = fut_class_def.name
@@ -202,7 +226,7 @@ class Evaluator:
 
     def call_function(
         self,
-        func_inst: ClassInstanceFn,
+        func_inst: FnWithInstance,
         func_call_params: list[ASTNode],
         c_inst: ClassInstance = None,
     ):
@@ -248,7 +272,7 @@ class Evaluator:
                 return instance.function_table[a_value]
 
             if instance and a_value in instance.class_table:
-                return instance.symbol_table[a_value]
+                return instance.class_table[a_value]
 
             if a_value in self.current_frame.symbol_table:
                 return self.current_frame.symbol_table[a_value]
@@ -258,6 +282,16 @@ class Evaluator:
 
             if a_value in self.current_frame.function_table:
                 return self.current_frame.function_table[a_value]
+
+            for fn_frame in reversed(self.call_stack):
+                if a_value in fn_frame.symbol_table:
+                    return fn_frame.symbol_table[a_value]
+
+                if a_value in fn_frame.class_table:
+                    return fn_frame.class_table[a_value]
+
+                if a_value in fn_frame.function_table:
+                    return fn_frame.function_table[a_value]
 
             raise Exception(f"Error: Undefined variable or property: {accessor}")
 
