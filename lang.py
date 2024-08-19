@@ -2,7 +2,14 @@ import argparse
 from pathlib import Path
 
 from ast_parser import AstAccessors, ASTNode, ASTType, FuncDefStmt, Parser, VarDecl
-from lang_value import BooleanValue, NumberValue, StringValue, Value, ValueTypes, ListValue
+from lang_value import (
+    BooleanValue,
+    NumberValue,
+    StringValue,
+    Value,
+    ValueTypes,
+    ListValue,
+)
 from tokenizer import Tokenizer, TokenType
 
 MAX_FUNCTION_DEPTH = 100
@@ -19,8 +26,9 @@ class_operator_override_fns: dict[TokenType, str] = {
     TokenType.LO_OR: "or_op",
     TokenType.LO_EQU: "eq_op",
     TokenType.LO_GTE: "gtr_eq",
-    TokenType.LO_LTE: "lss_eq"
+    TokenType.LO_LTE: "lss_eq",
 }
+
 
 class ClassDefinition:
     def __init__(self, name, parents, class_vars, class_methods):
@@ -48,6 +56,7 @@ class ClassInstance(Value):
 
     def __str__(self):
         return f"<Type:{self.class_name}; symbol_table:{self.symbol_table}>"
+
 
 class FunctionFrame:
     def __init__(
@@ -94,7 +103,9 @@ class Evaluator:
             if left.type == ValueTypes.ClassInstance:
                 op_fn_name = class_operator_override_fns[node.op]
                 if op_fn_name in left.function_table:
-                    return self.call_function(left.function_table[op_fn_name], [node.right], inst)
+                    return self.call_function(
+                        left.function_table[op_fn_name], [node.right], inst
+                    )
 
             right = self.evaluate(node.right, inst)
             if node.op == TokenType.PLUS:
@@ -188,7 +199,9 @@ class Evaluator:
             return self.evaluate_accessor(node, inst)
         return None
 
-    def add_class_vars_and_fns_to_inst(self, c_inst: ClassInstance, c_def: ClassDefinition):
+    def add_class_vars_and_fns_to_inst(
+        self, c_inst: ClassInstance, c_def: ClassDefinition
+    ):
         for c_var in c_def.class_vars:
             self.evaluate_accessor(
                 c_var.identifier, c_inst, self.evaluate(c_var.value), True
@@ -308,13 +321,15 @@ class Evaluator:
             raise Exception(
                 f"Left side of '.' must resolve to an object instance, got {left_value}."
             )
-        
+
         if accessor.type == ASTType.IndexAccess:
             left_value = self.evaluate_accessor(accessor.left, instance)
-            
+
             if isinstance(left_value, ClassInstance):
                 if "get_idx" in left_value.function_table:
-                    return self.call_function(left_value.function_table["get_idx"], [accessor.right], instance)
+                    return self.call_function(
+                        left_value.function_table["get_idx"], [accessor.right], instance
+                    )
             right_value = self.evaluate(accessor.right, instance)
             return left_value.get_idx(right_value)
         return None

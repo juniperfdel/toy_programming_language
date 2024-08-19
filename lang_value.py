@@ -18,7 +18,7 @@ value_type_strs = {
     ValueTypes.Boolean: "Boolean",
     ValueTypes.List: "List",
     ValueTypes.ClassInstance: "ClassInstance",
-    ValueTypes.Undefined: "Undefined"
+    ValueTypes.Undefined: "Undefined",
 }
 
 
@@ -95,7 +95,6 @@ class Value:
         raise NotImplementedError(
             "Get Index is not implemented " + self.str_for_other_type(other)
         )
-
 
     def str_for_other_type(self, other: Self):
         return f"for {self} and {other}"
@@ -220,16 +219,17 @@ class StringValue(Value):
             return self.value[int(other.value)]
         return super().get_idx(other)
 
+
 class ListValue(Value):
     def __init__(self, value: list) -> None:
         self.value = value
         self.type = ValueTypes.List
-    
+
     def add(self, other: Value):
         if other.type == ValueTypes.List:
             return ListValue(self.value + other.value)
         super().add(other)
-    
+
     def get_idx(self, other: Value):
         if other.type == ValueTypes.Number:
             return self.value[int(other.value)]
