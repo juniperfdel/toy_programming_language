@@ -1,0 +1,18 @@
+class Test {
+    var a = [1,2,3,4]
+    func init(b) {
+        a = a + b
+    }
+
+    func get_idx(idx) {
+        return a[idx]
+    }
+}
+
+var test = Test([5])
+
+print(test[4])
+
+var test2 = Test([6,7])
+
+print(test2[4])

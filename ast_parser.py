@@ -8,6 +8,7 @@ class ASTType(Enum):
     Number = auto()
     String = auto()
     Boolean = auto()
+    ListType = auto()
 
     BinOp = auto()
 
@@ -34,6 +35,7 @@ class ASTType(Enum):
     # Types of Access
     BareAccess = auto()
     MemberAccess = auto()
+    IndexAccess = auto()
 
 
 class ASTNode:
@@ -88,8 +90,16 @@ class MemberAccess(ASTNode):
     def __str__(self) -> str:
         return f"{self.left}.{self.right}"
 
+class IndexAccess(ASTNode):
+    def __init__(self, left: "AstAccessors", right: "AstAccessors") -> None:
+        self.left = left
+        self.right = right
+        self.type = ASTType.IndexAccess
 
-AstAccessors: TypeAlias = Union[BareAccess, MemberAccess]
+    def __str__(self) -> str:
+        return f"{self.left}[{self.right}]"
+
+AstAccessors: TypeAlias = Union[BareAccess, MemberAccess, IndexAccess]
 
 
 class VarDecl(ASTNode):
@@ -227,6 +237,14 @@ class Boolean(ASTNode):
     def __str__(self) -> str:
         return "TRUE" if self.value else "FALSE"
 
+class ListType(ASTNode):
+    def __init__(self, elements: list[ASTNode]) -> None:
+        self.elements = elements
+        self.type = ASTType.ListType
+
+    def __str__(self) -> str:
+        return f'(ListType ({"; ".join(map(str,self.elements))}))'
+
 
 def check_if_token_keyword(itok: Token) -> None:
     if itok.value.lower() in keyword_tokens.keys():
@@ -238,9 +256,12 @@ def check_if_token_keyword(itok: Token) -> None:
 def consume_accessor(ip: "Parser") -> AstAccessors:
     id_tok = ip.consume(TokenType.IDENTIFIER)
     check_if_token_keyword(id_tok)
-    if (ip.pos < ip.tok_len) and (ip.tokens[ip.pos].type == TokenType.DOT):
-        ip.consume(TokenType.DOT)
-        return MemberAccess(BareAccess(id_tok.value), consume_accessor(ip))
+    if (ip.pos < ip.tok_len):
+        if ip.tokens[ip.pos].type == TokenType.DOT:
+            ip.consume(TokenType.DOT)
+            return MemberAccess(BareAccess(id_tok.value), consume_accessor(ip))
+        if ip.tokens[ip.pos].type == TokenType.LSQBRA:
+            return IndexAccess(BareAccess(id_tok.value), consume_block(ip, left_bound=TokenType.LSQBRA, right_bound=TokenType.RSQBRA)[0])
     return BareAccess(id_tok.value)
 
 
@@ -276,6 +297,7 @@ def consume_block(
     token_ingest: "Parser" = None,
     left_bound: TokenType = TokenType.LBRACK,
     right_bound: TokenType = TokenType.RBRACK,
+    include_comma: bool = False,
 ):
     tok_ingest = token_ingest if token_ingest is not None else Parser()
     ip.consume(left_bound)
@@ -293,7 +315,7 @@ def consume_block(
     end_pos = ip.pos
     ip.consume(right_bound)
     tok_ingest.reset(ip.tokens[start_pos:end_pos])
-    return tok_ingest.parse()
+    return tok_ingest.parse(include_comma)
 
 
 def consume_func_def(ip: "Parser"):
@@ -411,37 +433,12 @@ parse_keyword_ast: dict[TokenType, Callable[["Parser"], ASTNode]] = {
 
 
 def consume_func_call(ip: "Parser", func_name_node: AstAccessors) -> FuncCallStmt:
-    ip.consume(TokenType.LPAREN)
-    arg_parser = Parser()
-    arg_tokens: list[Token] = []
-    arg_nodes: list[ASTNode] = []
-    c_depth = 0
-    while ip.pos < ip.tok_len:
-        c_tok: Token = ip.tokens[ip.pos]
-        if c_tok.type == TokenType.COMMA:
-            arg_parser.reset(arg_tokens)
-            arg_nodes.append(arg_parser.logic_stg1())
-            arg_tokens = []
-            ip.consume(TokenType.COMMA)
-            continue
-        if c_tok.type == TokenType.RPAREN:
-            c_depth = c_depth - 1
-            if c_depth < 0:
-                if arg_tokens:
-                    arg_parser.reset(arg_tokens)
-                    arg_nodes.append(arg_parser.logic_stg1())
-                arg_tokens = []
-                ip.consume(TokenType.RPAREN)
-                break
-        if c_tok.type == TokenType.LPAREN:
-            c_depth = c_depth + 1
-        arg_tokens.append(ip.consume())
-
-    if arg_tokens:
-        arg_parser.reset(arg_tokens)
-        arg_nodes.append(arg_parser.logic_stg1())
-
+    arg_nodes: list[ASTNode] = consume_block(ip, left_bound=TokenType.LPAREN, right_bound=TokenType.RPAREN, include_comma=True)
     return FuncCallStmt(func_name_node, arg_nodes)
+
+def consume_list_def(ip: "Parser") -> ListType:
+    arg_nodes: list[ASTNode] = consume_block(ip, left_bound=TokenType.LSQBRA, right_bound=TokenType.RSQBRA, include_comma=True)
+    return ListType(arg_nodes)
 
 
 def consume_func_set_id(ip: "Parser", assign_name: AstAccessors) -> VarDecl:
@@ -462,9 +459,12 @@ def consume_identifier(ip: "Parser"):
     rv.line = name_tok.line
     return rv
 
-
 # Parser implementation
 class Parser:
+    split_tokens = {
+        False: [TokenType.NEWLINE],
+        True:  [TokenType.COMMA, TokenType.NEWLINE]
+    }
     def __init__(self, tokens: list[Token] | None = None):
         if tokens is None:
             tokens = []
@@ -475,15 +475,20 @@ class Parser:
     def reset(self, tokens: list[Token]):
         self.__init__(tokens)
 
-    def parse(self) -> list[ASTNode]:
+    def parse(self, include_comma = False) -> list[ASTNode]:
+        token_delim = self.split_tokens[include_comma]
         rv = []
         while self.pos < self.tok_len:
-            if self.tokens[self.pos].type == TokenType.NEWLINE:
-                self.consume(TokenType.NEWLINE)
+            if self.tokens[self.pos].type in token_delim:
+                self.consume(self.tokens[self.pos].type)
                 continue
             rv.append(self.statement())
             if self.pos < self.tok_len:
-                self.consume(TokenType.NEWLINE)
+                if self.tokens[self.pos].type in token_delim:
+                    self.consume(self.tokens[self.pos].type)
+                else:
+                    c_tok = self.tokens[self.pos]
+                    raise SyntaxError(f"Expected {'Newline or Comma' if include_comma else 'Newline'}, but got {c_tok.type} at {c_tok.line}:{c_tok.column}")
         return rv
 
     def consume(self, token_type: TokenType | None = None) -> Token:
@@ -576,6 +581,8 @@ class Parser:
             return Boolean(False)
         elif token.type == TokenType.IDENTIFIER:
             return consume_identifier(self)
+        elif token.type == TokenType.LSQBRA:
+            return consume_list_def(self)
         elif token.type == TokenType.LPAREN:
             self.consume(TokenType.LPAREN)
             node = self.logic_stg1()

@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 
 from ast_parser import AstAccessors, ASTNode, ASTType, FuncDefStmt, Parser, VarDecl
-from lang_value import BooleanValue, NumberValue, StringValue, Value, ValueTypes
+from lang_value import BooleanValue, NumberValue, StringValue, Value, ValueTypes, ListValue
 from tokenizer import Tokenizer, TokenType
 
 MAX_FUNCTION_DEPTH = 100
@@ -87,6 +87,8 @@ class Evaluator:
             return StringValue(node.value)
         elif node_type == ASTType.Boolean:
             return BooleanValue(node.value)
+        elif node_type == ASTType.ListType:
+            return ListValue([self.evaluate(ele, inst) for ele in node.elements])
         elif node_type == ASTType.BinOp:
             left = self.evaluate(node.left, inst)
             if left.type == ValueTypes.ClassInstance:
@@ -297,6 +299,7 @@ class Evaluator:
 
         if accessor.type == ASTType.MemberAccess:
             left_value = self.evaluate_accessor(accessor.left, instance)
+
             if isinstance(left_value, ClassInstance):
                 return self.evaluate_accessor(
                     accessor.right, left_value, assign_value, force_assign
@@ -305,6 +308,15 @@ class Evaluator:
             raise Exception(
                 f"Left side of '.' must resolve to an object instance, got {left_value}."
             )
+        
+        if accessor.type == ASTType.IndexAccess:
+            left_value = self.evaluate_accessor(accessor.left, instance)
+            
+            if isinstance(left_value, ClassInstance):
+                if "get_idx" in left_value.function_table:
+                    return self.call_function(left_value.function_table["get_idx"], [accessor.right], instance)
+            right_value = self.evaluate(accessor.right, instance)
+            return left_value.get_idx(right_value)
         return None
 
 
