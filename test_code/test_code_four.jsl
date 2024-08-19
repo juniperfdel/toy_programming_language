@@ -1,4 +1,7 @@
 var a = [[1,2],2,3,4]
 var b = "abc"
+
+a[2] = 5
+print(a)
 print(a[0])
 print(b[a[1]])

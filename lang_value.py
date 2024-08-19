@@ -96,6 +96,11 @@ class Value:
             "Get Index is not implemented " + self.str_for_other_type(other)
         )
 
+    def set_idx(self, key: Self, other: Self):
+        raise NotImplementedError(
+            "Set Index is not implemented " + self.str_for_other_type(other)
+        )
+
     def str_for_other_type(self, other: Self):
         return f"for {self} and {other}"
 
@@ -234,3 +239,9 @@ class ListValue(Value):
         if other.type == ValueTypes.Number:
             return self.value[int(other.value)]
         return super().get_idx(other)
+
+    def set_idx(self, key: Self, other: Self):
+        if key.type == ValueTypes.Number:
+            self.value[int(key.value)] = other
+            return other
+        return super().set_idx(key, other)

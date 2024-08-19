@@ -324,7 +324,14 @@ class Evaluator:
 
         if accessor.type == ASTType.IndexAccess:
             left_value = self.evaluate_accessor(accessor.left, instance)
-
+            if assign_value:
+                if isinstance(left_value, ClassInstance):
+                    if "set_idx" in left_value.function_table:
+                        return self.call_function(
+                            left_value.function_table["set_idx"], [accessor.right, assign_value], instance
+                        )
+                right_value = self.evaluate(accessor.right, instance)
+                return left_value.set_idx(right_value, assign_value)
             if isinstance(left_value, ClassInstance):
                 if "get_idx" in left_value.function_table:
                     return self.call_function(
@@ -340,6 +347,9 @@ def main():
     parser.add_argument("ifile", help="The file with the code", type=Path)
     parser.add_argument(
         "--debug", help="Show debugging information", action="store_true"
+    )
+    parser.add_argument(
+        "--memory", help="Show final memory information", action="store_true"
     )
     args = parser.parse_args()
 
@@ -362,7 +372,10 @@ def main():
     main_frame = FunctionFrame("main", ast_lines)
     evaluator = Evaluator()
     evaluator.evaluate_frame(main_frame)
-    print(main_frame.symbol_table)
+    if args.memory:
+        print("Main Frame Symbol Table: ", main_frame.symbol_table)
+        print("Main Frame Function Table: ", main_frame.function_table)
+        print("Main Frame Class Table: ", main_frame.class_table)
 
 
 if __name__ == "__main__":
