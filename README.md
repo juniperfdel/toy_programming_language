@@ -14,6 +14,7 @@ Language features:
 * Printing!
 * While Loops!
 * Classes!
+* Importing!
 
 Files:
 * `tokenizer.py` - The tokenizer code

@@ -1,0 +1,5 @@
+import test_classes_two
+
+class Test {
+    var a = 15
+}

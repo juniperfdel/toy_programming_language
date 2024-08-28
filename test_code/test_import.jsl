@@ -1,0 +1,8 @@
+import inner_mod/test_classes
+
+
+var t = Test2()
+var t2 = Test()
+
+print(t2.a)
+print(t.m)

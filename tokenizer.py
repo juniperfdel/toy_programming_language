@@ -70,6 +70,9 @@ class TokenType(Enum):
     CLASSDEF = auto()
     DOT = auto()
 
+    # Importing from other files
+    IMPORT = auto()
+
 
 @dataclass
 class Token:
@@ -155,6 +158,7 @@ KEYWORD_TOKEN_TYPES = {
     TokenType.UNTIL: "until",
     TokenType.CLASSDEF: "class",
     TokenType.BREAK: "break",
+    TokenType.IMPORT: "import"
 }
 
 

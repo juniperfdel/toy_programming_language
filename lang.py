@@ -77,7 +77,8 @@ class FunctionFrame:
 
 
 class Evaluator:
-    def __init__(self) -> None:
+    def __init__(self, current_file = None) -> None:
+        self.current_file: Path = current_file
         self.current_frame = None
         self.call_stack: list[FunctionFrame] = []
 
@@ -139,6 +140,13 @@ class Evaluator:
             self.evaluate_accessor(node.identifier, inst, value)
         elif node_type == ASTType.VarGet:
             return self.evaluate_accessor(node.value, inst)
+        elif node_type == ASTType.ImportStmt:
+            fname: str = node.name
+            ffile: Path = self.current_file.parent / (fname + ".jsl")
+            inner_frame = process_file(ffile)
+            self.current_frame.class_table.update(inner_frame.class_table)
+            self.current_frame.function_table.update(inner_frame.function_table)
+            self.current_frame.symbol_table.update(inner_frame.symbol_table)
         elif node_type == ASTType.FuncDefStmt:
             self.current_frame.function_table[node.name] = FnWithInstance(node, None)
         elif node_type == ASTType.FuncCallStmt:
@@ -344,6 +352,28 @@ class Evaluator:
             return left_value.get_idx(right_value)
         return None
 
+def process_file(ifile_str: str, DEBUG = False):
+    ifile_p = Path(ifile_str)
+    if not ifile_p.exists():
+        raise FileNotFoundError("File not found! " + str(ifile_p))
+    code = ifile_p.read_text()
+
+    tokenizer = Tokenizer(code)
+    tokens = tokenizer.tokenize()
+    if DEBUG:
+        print(tokens)
+
+    parser = Parser(tokens)
+    ast_lines = parser.parse()
+    if DEBUG:
+        for i, a in enumerate(ast_lines):
+            print(i, ":", str(a))
+
+    main_frame = FunctionFrame("main", ast_lines)
+    evaluator = Evaluator(ifile_p)
+    evaluator.evaluate_frame(main_frame)
+    return main_frame
+
 
 def main():
     parser = argparse.ArgumentParser("Juniper's Silly Little Language")
@@ -358,23 +388,8 @@ def main():
 
     DEBUG: bool = args.debug
 
-    ifile: Path = args.ifile
-    code = ifile.read_text()
+    main_frame = process_file(args.ifile, DEBUG)
 
-    tokenizer = Tokenizer(code)
-    tokens = tokenizer.tokenize()
-    if DEBUG:
-        print(tokens)
-
-    parser = Parser(tokens)
-    ast_lines = parser.parse()
-    if DEBUG:
-        for i, a in enumerate(ast_lines):
-            print(i, ":", str(a))
-
-    main_frame = FunctionFrame("main", ast_lines)
-    evaluator = Evaluator()
-    evaluator.evaluate_frame(main_frame)
     if args.memory:
         print("Main Frame Symbol Table: ", main_frame.symbol_table)
         print("Main Frame Function Table: ", main_frame.function_table)

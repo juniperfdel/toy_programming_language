@@ -37,6 +37,9 @@ class ASTType(Enum):
     MemberAccess = auto()
     IndexAccess = auto()
 
+    # Importing
+    ImportStmt = auto()
+
 
 class ASTNode:
     type = None
@@ -142,6 +145,14 @@ class FuncDefStmt(ASTNode):
 
     def __str__(self) -> str:
         return f'(FUNCDEF {self.name} {self.params} ({"; ".join(map(str,self.body))}))'
+
+class ImportStmt(ASTNode):
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.type = ASTType.ImportStmt
+
+    def __str__(self) -> str:
+        return f'(IMPORT {self.name})'
 
 
 class FuncCallStmt(ASTNode):
@@ -430,6 +441,25 @@ def consume_global_fn(ip: "Parser"):
     )
     return GlobalFnStmt(fn_name_tok.value, arg_nodes)
 
+
+def consume_import(ip: "Parser") -> ImportStmt:
+    ip.consume(TokenType.IMPORT)
+    ifn = ""
+    c_tok = ip.tokens[ip.pos]
+    while c_tok.type in (TokenType.IDENTIFIER, TokenType.DIVIDE, TokenType.DOT):
+        if c_tok.type == TokenType.DOT:
+            ip.consume(TokenType.DOT)
+            ip.consume(TokenType.DOT)
+            ifn = ifn + ".."
+        elif c_tok.type == TokenType.DIVIDE:
+            ip.consume(TokenType.DIVIDE)
+            ifn = ifn + "/"
+        else:
+            n_tok = ip.consume(TokenType.IDENTIFIER)
+            ifn = ifn + n_tok.value
+        c_tok = ip.tokens[ip.pos]
+    return ImportStmt(ifn)
+
 parse_keyword_ast: dict[TokenType, Callable[["Parser"], ASTNode]] = {
     TokenType.ASSIGN: consume_var_decl,
     TokenType.GLOBALFN: consume_global_fn,
@@ -440,6 +470,7 @@ parse_keyword_ast: dict[TokenType, Callable[["Parser"], ASTNode]] = {
     TokenType.UNTIL: consume_until,
     TokenType.CLASSDEF: consume_class_def,
     TokenType.BREAK: consume_break,
+    TokenType.IMPORT: consume_import
 }
 
 def consume_func_call(ip: "Parser", func_name_node: AstAccessors) -> FuncCallStmt:
@@ -460,7 +491,6 @@ def consume_list_def(ip: "Parser") -> ListType:
         include_comma=True,
     )
     return ListType(arg_nodes)
-
 
 def consume_func_set_id(ip: "Parser", assign_name: AstAccessors) -> VarDecl:
     ip.consume(TokenType.EQUALS)
